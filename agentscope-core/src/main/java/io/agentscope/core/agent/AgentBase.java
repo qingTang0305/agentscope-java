@@ -88,6 +88,8 @@ public abstract class AgentBase extends StateModuleBase implements Agent {
     private final String agentId;
     private final String name;
     private final String description;
+    private final AtomicBoolean running = new AtomicBoolean(false);
+    private final boolean checkRunning;
     private final List<Hook> hooks;
     private static final List<Hook> systemHooks = new CopyOnWriteArrayList<>();
     private final Map<String, List<AgentBase>> hubSubscribers = new ConcurrentHashMap<>();
@@ -102,21 +104,34 @@ public abstract class AgentBase extends StateModuleBase implements Agent {
      * @param name Agent name
      */
     public AgentBase(String name) {
-        this(name, null, List.of());
+        this(name, null, true, List.of());
+    }
+
+    /**
+     * Constructor for AgentBase.
+     *
+     * @param name Agent name
+     * @param description Agent description
+     */
+    public AgentBase(String name, String description) {
+        this(name, description, true, List.of());
     }
 
     /**
      * Constructor for AgentBase with hooks.
      *
      * @param name Agent name
+     * @param description Agent description
+     * @param checkRunning Whether to check running state
      * @param hooks List of hooks for monitoring/intercepting execution
      */
-    public AgentBase(String name, String description, List<Hook> hooks) {
+    public AgentBase(String name, String description, boolean checkRunning, List<Hook> hooks) {
         super();
         this.agentId = UUID.randomUUID().toString();
         this.name = name;
         this.description = description;
-        this.hooks = new ArrayList<>(hooks != null ? hooks : List.of());
+        this.checkRunning = checkRunning;
+        this.hooks = new CopyOnWriteArrayList<>(hooks != null ? hooks : List.of());
         this.hooks.addAll(systemHooks);
 
         // Register basic agent state
@@ -126,17 +141,17 @@ public abstract class AgentBase extends StateModuleBase implements Agent {
     }
 
     @Override
-    public String getAgentId() {
+    public final String getAgentId() {
         return agentId;
     }
 
     @Override
-    public String getName() {
+    public final String getName() {
         return name;
     }
 
     @Override
-    public String getDescription() {
+    public final String getDescription() {
         return description != null ? description : Agent.super.getDescription();
     }
 
@@ -150,6 +165,11 @@ public abstract class AgentBase extends StateModuleBase implements Agent {
      */
     @Override
     public final Mono<Msg> call(List<Msg> msgs) {
+        if (!running.compareAndSet(false, true) && checkRunning) {
+            return Mono.error(
+                    new IllegalStateException(
+                            "Agent is still running, please wait for it to finish"));
+        }
         resetInterruptFlag();
 
         return TracerRegistry.get()
@@ -161,7 +181,8 @@ public abstract class AgentBase extends StateModuleBase implements Agent {
                                         .flatMap(this::doCall)
                                         .flatMap(this::notifyPostCall)
                                         .onErrorResume(
-                                                createErrorHandler(msgs.toArray(new Msg[0]))));
+                                                createErrorHandler(msgs.toArray(new Msg[0]))))
+                .doFinally(signalType -> running.set(false));
     }
 
     /**
@@ -175,6 +196,11 @@ public abstract class AgentBase extends StateModuleBase implements Agent {
      */
     @Override
     public final Mono<Msg> call(List<Msg> msgs, Class<?> structuredOutputClass) {
+        if (!running.compareAndSet(false, true) && checkRunning) {
+            return Mono.error(
+                    new IllegalStateException(
+                            "Agent is still running, please wait for it to finish"));
+        }
         resetInterruptFlag();
 
         return TracerRegistry.get()
@@ -186,18 +212,8 @@ public abstract class AgentBase extends StateModuleBase implements Agent {
                                         .flatMap(m -> doCall(m, structuredOutputClass))
                                         .flatMap(this::notifyPostCall)
                                         .onErrorResume(
-                                                createErrorHandler(msgs.toArray(new Msg[0]))));
-    }
-
-    /**
-     * Internal implementation for processing a single message.
-     * Subclasses must implement their specific logic here.
-     *
-     * @param msg Input message
-     * @return Response message
-     */
-    protected Mono<Msg> doCall(Msg msg) {
-        return doCall(msg != null ? List.of(msg) : null);
+                                                createErrorHandler(msgs.toArray(new Msg[0]))))
+                .doFinally(signalType -> running.set(false));
     }
 
     /**
@@ -355,20 +371,8 @@ public abstract class AgentBase extends StateModuleBase implements Agent {
      * @param msg The message to observe
      * @return Mono that completes when observation is done
      */
-    protected abstract Mono<Void> doObserve(Msg msg);
-
-    /**
-     * Observe multiple messages without generating a reply.
-     * Default implementation delegates to doObserve(Msg) for each message.
-     *
-     * @param msgs The messages to observe
-     * @return Mono that completes when all observations are done
-     */
-    protected Mono<Void> doObserve(List<Msg> msgs) {
-        if (msgs == null || msgs.isEmpty()) {
-            return Mono.empty();
-        }
-        return Flux.fromIterable(msgs).flatMap(this::doObserve).then();
+    protected Mono<Void> doObserve(Msg msg) {
+        return Mono.empty();
     }
 
     /**
@@ -412,37 +416,19 @@ public abstract class AgentBase extends StateModuleBase implements Agent {
     /**
      * Notify all hooks that agent is starting (preCall hook).
      *
-     * @param msg Input message
-     * @return Mono containing the original message
-     */
-    private Mono<Msg> notifyPreCall(Msg msg) {
-        PreCallEvent event = new PreCallEvent(this);
-        return Flux.fromIterable(getSortedHooks())
-                .flatMap(hook -> hook.onEvent(event))
-                .then(Mono.just(msg));
-    }
-
-    /**
-     * Notify all hooks that agent is starting (preCall hook).
+     * <p>Hooks may modify the input messages via {@link PreCallEvent#setInputMessages(List)}.
+     * Hooks are executed sequentially, with each hook receiving the event modified by previous hooks.
      *
      * @param msgs Input messages
-     * @return Mono containing the original messages
+     * @return Mono containing the messages after all hooks have processed them (may be modified)
      */
     private Mono<List<Msg>> notifyPreCall(List<Msg> msgs) {
-        PreCallEvent event = new PreCallEvent(this);
-        return Flux.fromIterable(getSortedHooks())
-                .flatMap(hook -> hook.onEvent(event))
-                .then(Mono.just(msgs));
-    }
-
-    /**
-     * Notify all hooks that agent is starting (preCall hook) - no-arg version.
-     *
-     * @return Mono that completes when all hooks are notified
-     */
-    private Mono<Void> notifyPreCall() {
-        PreCallEvent event = new PreCallEvent(this);
-        return Flux.fromIterable(getSortedHooks()).flatMap(hook -> hook.onEvent(event)).then();
+        PreCallEvent event = new PreCallEvent(this, msgs);
+        Mono<PreCallEvent> result = Mono.just(event);
+        for (Hook hook : getSortedHooks()) {
+            result = result.flatMap(hook::onEvent);
+        }
+        return result.map(PreCallEvent::getInputMessages);
     }
 
     /**
@@ -459,7 +445,7 @@ public abstract class AgentBase extends StateModuleBase implements Agent {
         PostCallEvent event = new PostCallEvent(this, finalMsg);
         Mono<PostCallEvent> result = Mono.just(event);
         for (Hook hook : getSortedHooks()) {
-            result = result.flatMap(e -> hook.onEvent(e));
+            result = result.flatMap(hook::onEvent);
         }
         // After hooks, broadcast to subscribers
         return result.map(PostCallEvent::getFinalMessage)
@@ -529,7 +515,7 @@ public abstract class AgentBase extends StateModuleBase implements Agent {
      * @param msg Message to broadcast
      * @return Mono that completes when all subscribers have observed the message
      */
-    protected Mono<Void> broadcastToSubscribers(Msg msg) {
+    private Mono<Void> broadcastToSubscribers(Msg msg) {
         if (hubSubscribers.isEmpty()) {
             return Mono.empty();
         }
@@ -547,7 +533,7 @@ public abstract class AgentBase extends StateModuleBase implements Agent {
      * @return Mono that completes when observation is done
      */
     @Override
-    public Mono<Void> observe(Msg msg) {
+    public final Mono<Void> observe(Msg msg) {
         return doObserve(msg);
     }
 
@@ -559,8 +545,11 @@ public abstract class AgentBase extends StateModuleBase implements Agent {
      * @return Mono that completes when all observations are done
      */
     @Override
-    public Mono<Void> observe(List<Msg> msgs) {
-        return doObserve(msgs);
+    public final Mono<Void> observe(List<Msg> msgs) {
+        if (msgs == null || msgs.isEmpty()) {
+            return Mono.empty();
+        }
+        return Flux.fromIterable(msgs).flatMap(this::doObserve).then();
     }
 
     /**
@@ -571,8 +560,8 @@ public abstract class AgentBase extends StateModuleBase implements Agent {
      * @return Flux of events emitted during execution
      */
     @Override
-    public Flux<Event> stream(Msg msg, StreamOptions options) {
-        return createEventStream(options, () -> call(msg));
+    public final Flux<Event> stream(Msg msg, StreamOptions options) {
+        return stream(List.of(msg), options);
     }
 
     /**
@@ -583,7 +572,7 @@ public abstract class AgentBase extends StateModuleBase implements Agent {
      * @return Flux of events emitted during execution
      */
     @Override
-    public Flux<Event> stream(List<Msg> msgs, StreamOptions options) {
+    public final Flux<Event> stream(List<Msg> msgs, StreamOptions options) {
         return createEventStream(options, () -> call(msgs));
     }
 
@@ -632,7 +621,7 @@ public abstract class AgentBase extends StateModuleBase implements Agent {
                                                 // Complete the stream
                                                 sink.complete();
                                             },
-                                            error -> sink.error(error));
+                                            sink::error);
                         },
                         FluxSink.OverflowStrategy.BUFFER)
                 .publishOn(Schedulers.boundedElastic());

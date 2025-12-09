@@ -20,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.agentscope.core.model.ChatUsage;
 import java.beans.Transient;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -48,6 +49,8 @@ public class Msg {
 
     private static final DateTimeFormatter TIMESTAMP_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS").withZone(ZoneId.systemDefault());
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final String id;
 
@@ -252,8 +255,7 @@ public class Msg {
                     "No structured data in message. Use hasStructuredData() to check first.");
         }
         try {
-            ObjectMapper mapper = new ObjectMapper();
-            return mapper.convertValue(metadata, targetClass);
+            return OBJECT_MAPPER.convertValue(metadata, targetClass);
         } catch (Exception e) {
             throw new IllegalArgumentException(
                     "Failed to convert metadata to "
@@ -280,6 +282,37 @@ public class Msg {
                 .map(TextBlock.class::cast)
                 .map(TextBlock::getText)
                 .collect(Collectors.joining("\n"));
+    }
+
+    /**
+     * Gets the chat usage statistics from this message's metadata.
+     *
+     * <p>This method retrieves the accumulated token usage information that was
+     * recorded during model generation. Returns null if no usage information
+     * is available.
+     *
+     * <p>Example usage:
+     * <pre>{@code
+     * Msg response = agent.call(userMsg).block();
+     * ChatUsage usage = response.getChatUsage();
+     * if (usage != null) {
+     *     System.out.println("Input tokens: " + usage.getInputTokens());
+     *     System.out.println("Output tokens: " + usage.getOutputTokens());
+     *     System.out.println("Total tokens: " + usage.getTotalTokens());
+     *     System.out.println("Time: " + usage.getTime() + "s");
+     * }
+     * }</pre>
+     *
+     * @return The ChatUsage object containing token counts and timing, or null if not available
+     */
+    @Transient
+    @JsonIgnore
+    public ChatUsage getChatUsage() {
+        if (metadata == null) {
+            return null;
+        }
+        Object usage = metadata.get(MessageMetadataKeys.CHAT_USAGE);
+        return usage instanceof ChatUsage ? (ChatUsage) usage : null;
     }
 
     public static class Builder {

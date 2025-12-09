@@ -1,4 +1,3 @@
-[**English Homepage**](README.md)
 <p align="center">
   <img
     src="https://img.alicdn.com/imgextra/i1/O1CN01nTg6w21NqT5qFKH1u_!!6000000001621-55-tps-550-550.svg"
@@ -7,140 +6,119 @@
   />
 </p>
 
-## AgentScope Java
+<h3 align="center">用 Java 构建生产级 AI 智能体</h3>
 
-面向 Java 开发者的智能体编程框架，用于构建大语言模型应用。
+<p align="center">
+  <a href="https://java.agentscope.io/zh/intro.html">📖 文档</a>
+  &nbsp;|&nbsp;
+  <a href="README.md">English</a>
+  &nbsp;|&nbsp;
+  <a href="https://discord.gg/eYMpfnkG8h">Discord</a>
+</p>
 
-AgentScope 提供了完整的工具集，支持创建具备工具调用、记忆管理、多智能体协作等能力的智能体。
+<p align="center">
+  <img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License" />
+  <img src="https://img.shields.io/badge/JDK-17%2B-orange" alt="JDK 17+" />
+  <img src="https://img.shields.io/maven-central/v/io.agentscope/agentscope?color=green" alt="Maven Central" />
+</p>
 
-![](https://img.shields.io/badge/GUI-AgentScope_Studio-blue?logo=look&logoColor=green&color=dark-green)![](https://img.shields.io/badge/license-Apache--2.0-black)
+---
 
-## Why AgentScope?
+AgentScope Java 是一个面向智能体的编程框架，用于构建基于大语言模型的应用。它提供了构建智能体所需的一切：ReAct 推理、工具调用、记忆管理、多智能体协作等。
 
-浅显入门，精深致用。
+## 核心亮点
 
-- **对开发者透明**: 透明是 AgentScope 的**首要原则**。无论提示工程、API 调用、智能体构建还是工作流程编排，坚持对开发者可见可控。拒绝深度封装或隐式魔法。
-- **实时介入**: 原生支持**实时**中断和**自定义**中断处理。
-- **更智能化**: 支持智能体工具管理、智能体长期记忆控制和智能化 RAG 等。
-- **模型无关**: 一次编程，适配所有模型（DashScope、OpenAI、Anthropic 等）。
-- **"乐高式"智能体构建**: 所有组件保持**模块化**且**相互独立**。
-- **面向多智能体**: 专为**多智能体**设计，**显式**的消息传递和工作流编排，支持 Pipeline 流水线。
-- **响应式架构**: 基于 Project Reactor 构建，高效的非阻塞异步操作。
-- **多模态支持**: 原生支持视觉、音频和视频内容处理。
-- **高度可定制**: 工具、提示、智能体、工作流、钩子和可视化，AgentScope 支持并鼓励开发者进行定制。
+### 🎯 自主且可控
+
+AgentScope 采用 ReAct（推理-行动）范式，使智能体能够自主规划和执行复杂任务。与僵化的工作流方式不同，ReAct 智能体可以动态决定使用哪些工具以及何时使用，实时适应不断变化的需求。
+
+然而，在生产环境中，没有控制的自主性是一种隐患。AgentScope 提供了完整的运行时介入机制：
+
+- **安全中断** - 在任意时刻暂停智能体执行，同时完整保留上下文和工具状态，支持无损恢复
+- **优雅取消** - 终止长时间运行或无响应的工具调用，不会破坏智能体状态，支持立即恢复和重定向
+- **人机协同** - 通过 Hook 系统在任意推理步骤注入修正、补充上下文或指导，保持人类对关键决策的监督
+
+### 🛠️ 内置工具
+
+AgentScope 内置了生产就绪的工具，解决智能体开发中的常见挑战：
+
+- **PlanNotebook** - 结构化的任务管理系统，将复杂目标分解为有序、可追踪的步骤。智能体可以创建、修改、暂停和恢复多个并发计划，确保多步骤工作流的系统化执行。
+
+- **结构化输出** - 自纠错的输出解析器，保证类型安全的响应。当 LLM 输出偏离预期格式时，系统自动检测错误并引导模型产生有效输出，直接映射到 Java POJO，无需手动解析。
+
+- **长期记忆** - 跨会话的持久化记忆存储，具备语义搜索能力。支持自动管理、智能体主动记录或混合模式。支持多租户隔离，满足企业级部署中智能体独立服务多用户的需求。
+
+- **RAG（检索增强生成）** - 与企业知识库无缝集成。支持自建的基于 Embedding 的检索服务，也支持阿里云百炼等托管服务，让智能体的回答基于权威数据源。
+
+### 🔌 无缝集成
+
+AgentScope 设计上能够与现有企业基础设施集成，无需大规模改造：
+
+- **MCP 协议** - 集成任意 MCP 兼容的服务，即刻扩展智能体能力。连接日益丰富的 MCP 工具和服务生态——从文件系统、数据库到浏览器、代码解释器——无需编写自定义集成代码。
+
+- **A2A 协议** - 通过标准服务发现实现分布式多智能体协作。将智能体能力注册到 Nacos 或类似注册中心，使智能体之间的相互发现和调用如同调用微服务一样自然。
+
+### 🚀 生产就绪
+
+为企业级部署需求而构建：
+
+- **高性能** - 基于 Project Reactor 的响应式架构确保非阻塞执行。GraalVM 原生镜像编译实现 200ms 冷启动，使 AgentScope 适用于 Serverless 和弹性伸缩环境。
+
+- **安全沙箱** - AgentScope Runtime 为不可信的工具代码提供隔离执行环境。内置 GUI 自动化、文件系统操作和移动设备交互的预置沙箱，防止未授权访问系统资源。
+
+- **可观测性** - 原生集成 OpenTelemetry，实现智能体执行全链路的分布式追踪。AgentScope Studio 提供可视化调试、实时监控和完整日志，支持开发和生产环境。
 
 ## 快速开始
-### 安装
-AgentScope Java 需要 **JDK 17** 或更高版本。
+
+**环境要求：** JDK 17+
 
 ```xml
 <dependency>
     <groupId>io.agentscope</groupId>
     <artifactId>agentscope</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 </dependency>
 ```
 
-### Hello AgentScope!
-从一个基本的 ReActAgent 开始，回复用户查询！
-
 ```java
-public static void main(String[] args) {
-    ReActAgent agent = ReActAgent.builder()
-        .name("Assistant")
-        .sysPrompt("You are a helpful AI assistant.")
-        .model(DashScopeChatModel.builder()
-				.apiKey(System.getenv("DASHSCOPE_API_KEY"))
-				.modelName("qwen-max")
-				.build())
-        .build();
+ReActAgent agent = ReActAgent.builder()
+    .name("Assistant")
+    .sysPrompt("You are a helpful AI assistant.")
+    .model(DashScopeChatModel.builder()
+        .apiKey(System.getenv("DASHSCOPE_API_KEY"))
+        .modelName("qwen-max")
+        .build())
+    .build();
 
-    Msg userMessage = Msg.builder()
-        .textContent("Hello, please introduce yourself.")
-        .build();
-
-    Msg response = agent.call(userMessage).block();
-    System.out.println("Agent Response: " + response.getTextContent());
-}
+Msg response = agent.call(Msg.userMsg("Hello!")).block();
+System.out.println(response.getTextContent());
 ```
 
-### 为 Agent 配备工具
-1. 定义工具
+更多示例请参阅[文档](https://java.agentscope.io/zh/intro.html)。
 
-	定义一个工具类，其中方法被 `@Tool` 注解。这里有一个 `SimpleTools` 类，其中有一个时间工具：
+## 贡献
 
-	```java
-	public class SimpleTools {
-	    @Tool(name = "get_time", description = "Get current time string of a time zone")
-	    public String getTime(
-	            @ToolParam(name = "zone", description = "Time zone, e.g., Beijing") String zone) {
-	        LocalDateTime now = LocalDateTime.now();
-	        return now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-	    }
-	}
-	```
+欢迎贡献！请参阅 [CONTRIBUTING_zh.md](./CONTRIBUTING_zh.md) 了解详情。
 
-2. 注册工具到 ReActAgent
+## 社区
 
-	通过 `Toolkit` 使用 `registerTool` 方法注册工具类：
-
-	```java
-	public static void main(String[] args) {
-	    Model model = DashScopeChatModel.builder()
-	        .apiKey(System.getenv("DASHSCOPE_API_KEY"))
-	        .modelName("qwen-max")
-	        .build();
-
-	    Toolkit toolkit = new Toolkit();
-	    toolkit.registerTool(new SimpleTools());
-
-	    ReActAgent agent = ReActAgent.builder()
-	        .name("Assistant")
-	        .sysPrompt("You are a helpful AI assistant.")
-	        .model(model)
-	        .toolkit(toolkit)
-	        .build();
-
-	    Msg userMessage = Msg.builder()
-	        .role(MsgRole.USER)
-	        .textContent("Please tell me the current time.")
-	        .build();
-
-	    Msg response = agent.call(userMessage).block();
-	    System.out.println("Agent Response: " + response.getTextContent());
-	}
-	```
-
-## 文档
-
-### 快速入门
-+ [安装指南](./docs/zh/quickstart/installation.md)
-+ [核心概念](./docs/zh/quickstart/key-concepts.md)
-+ [创建 ReAct Agent](./docs/zh/quickstart/agent.md)
-
-### 核心功能
-+ [模型集成](./docs/zh/task/model.md)
-+ [工具系统](./docs/zh/task/tool.md)
-+ [记忆管理](./docs/zh/task/memory.md)
-+ [Hook 系统](./docs/zh/task/hook.md)
-
-### 高级功能
-+ [多智能体 Pipeline](./docs/zh/task/pipeline.md)
-+ [状态与会话管理](./docs/zh/task/session.md)
-+ [多模态 (视觉/音频)](./docs/zh/task/multimodal.md)
-+ [结构化输出](./docs/zh/task/structured-output.md)
-+ [MCP 集成](./docs/zh/task/mcp.md)
-+ [RAG](./docs/zh/task/rag.md)
-+ [计划管理](./docs/zh/task/plan.md)
-+ [AgentScope Studio](./docs/zh/task/studio.md)
-
-## Roadmap
-
-在 12 月，我们将进一步推出基于上下文管理与基于 Trinity-RFT 的强化学习最佳实践。
-
-在技术演进层面，我们正持续探索更高效、智能的上下文工程与多 Agent 协同范式，致力于支撑更强大的 AI 应用构建。
-
-此外，针对 Agent 流量呈现的"二八定律"特征（头部 20% 的 Agent 承载了 80% 的流量），我们在架构上会全力推进 Serverless 化，通过实现毫秒级冷启动与混合部署，帮助开发者在应对高并发的同时，显著降低部署成本并提升效率。
+| [Discord](https://discord.gg/eYMpfnkG8h) | 钉钉                                                                    |
+|------------------------------------------|-----------------------------------------------------------------------|
+| <img src="https://gw.alicdn.com/imgextra/i1/O1CN01hhD1mu1Dd3BWVUvxN_!!6000000000238-2-tps-400-400.png" width="100" height="100"> | <img src="./docs/imgs/dingtalk_qr_code.png" width="100" height="100"> |
 
 ## 许可
-AgentScope 基于 Apache License 2.0 发布。
+
+Apache License 2.0 - 详见 [LICENSE](./LICENSE)。
+
+## 论文
+
+如果 AgentScope 对您有帮助，请引用我们的论文：
+
+- [AgentScope 1.0: A Developer-Centric Framework for Building Agentic Applications](https://arxiv.org/abs/2508.16279)
+- [AgentScope: A Flexible yet Robust Multi-Agent Platform](https://arxiv.org/abs/2402.14034)
+
+## 贡献者
+
+<a href="https://github.com/agentscope-ai/agentscope-java/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=agentscope-ai/agentscope-java&max=999&columns=12&anon=1" />
+</a>
