@@ -37,5 +37,9 @@
         <module>agentscope-extensions-studio</module>
         <module>agentscope-extensions-session-redis</module>
         <module>agentscope-extensions-session-mysql</module>
+        <module>agentscope-extensions-scheduler/agentscope-extensions-scheduler</module>
+        <module>agentscope-extensions-scheduler/agentscope-extensions-scheduler-xxl-job</module>
+      	<module>agentscope-extensions-autocontext-memory</module>
+        <module>agentscope-extensions-reme</module>
     </modules>
 </project>
